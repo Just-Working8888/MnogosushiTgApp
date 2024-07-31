@@ -60,7 +60,7 @@
             <div class="profile-image">
                 <img class="img-fluid profile-pic" src="./assets/images/profile/p8.png" alt="p8">
             </div>
-            <h3 class="profile-name">    <h1>Geolocation WebSocket</h1>
+            <h3 class="profile-name">      <h1>Geolocation WebSocket</h1>
                 <input type="text" id="username" placeholder="Enter username">
                 <button id="startTracking">Start Tracking</button>
                 <div id="locationData"></div>
@@ -380,6 +380,18 @@
         </div>
     </div>
     <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/service-worker.js')
+                .then(registration => {
+                    console.log('ServiceWorker registered with scope:', registration.scope);
+                })
+                .catch(error => {
+                    console.log('ServiceWorker registration failed:', error);
+                });
+        }
+
+        const socket = io('http://192.168.1.103:3000', { path: '/location' });
+
         document.getElementById('startTracking').onclick = () => {
             const username = document.getElementById('username').value;
 
@@ -389,39 +401,33 @@
             }
 
             if ('geolocation' in navigator && 'WebSocket' in window) {
-                const socket = io('http://192.168.1.103:3000', { path: '/location' });
+                navigator.geolocation.watchPosition(
+                    (position) => {
+                        const locationData = {
+                            username: username,
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            timestamp: new Date().toISOString()
+                        };
 
-                socket.on('connect', () => {
-                    console.log('Connected to WebSocket server');
+                        socket.emit('sendLocation', locationData);
 
-                    navigator.geolocation.watchPosition(
-                        (position) => {
-                            const locationData = {
-                                username: username,
-                                latitude: position.coords.latitude,
-                                longitude: position.coords.longitude,
-                                timestamp: new Date().toISOString()
-                            };
-
-                            socket.emit('sendLocation', locationData);
-
-                            document.getElementById('locationData').innerText = `
-                                Username: ${locationData.username}
-                                Latitude: ${locationData.latitude}
-                                Longitude: ${locationData.longitude}
-                                Timestamp: ${locationData.timestamp}
-                            `;
-                        },
-                        (error) => {
-                            console.error('Error obtaining location', error);
-                        },
-                        {
-                            enableHighAccuracy: true,
-                            timeout: 1000,
-                            maximumAge: 0
-                        }
-                    );
-                });
+                        document.getElementById('locationData').innerText = `
+                            Username: ${locationData.username}
+                            Latitude: ${locationData.latitude}
+                            Longitude: ${locationData.longitude}
+                            Timestamp: ${locationData.timestamp}
+                        `;
+                    },
+                    (error) => {
+                        console.error('Error obtaining location', error);
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 5000,
+                        maximumAge: 0
+                    }
+                );
 
                 socket.on('receiveLocation', (data) => {
                     console.log('Location from server:', data);
