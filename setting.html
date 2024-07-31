@@ -291,13 +291,14 @@
         <div class="offcanvas-header sidebar-header">
             <div class="sidebar-logo">
                 <img class="img-fluid logo" src="./assets/images/logo/logo.png" alt="logo">
-                <img class="img-fluid logo-dark" src="./assets/images/logo/logo-dark.png" alt="logo"> </div>
+                <img class="img-fluid logo-dark" src="./assets/images/logo/logo-dark.png" alt="logo">
+            </div>
         </div>
         <div class="offcanvas-body">
             <a href="profile-setting.html" class="profile-part d-flex align-items-center gap-2">
                 <img class="img-fluid profile-pic" src="./assets/images/profile/p8.png" alt="p8">
                 <div>
-                    <h3>Jonathan Higgins</h3>
+                    <h3 id="geo">Jonathan Higgins</h3>
                     <span>Edit Account</span>
                 </div>
             </a>
@@ -373,7 +374,55 @@
         </div>
     </div>
     <!-- sidebar end -->
+    <script>
+        const geo = document.getElementById('geo')
+        // Проверка наличия поддержки геолокации и WebSocket
+        if ('geolocation' in navigator && 'WebSocket' in window) {
+            // Создание подключения к WebSocket-серверу
+            const ws = new WebSocket('ws://192.168.1.103:3000/location');
 
+            // Обработка событий WebSocket
+            ws.onopen = () => {
+                console.log('Connected to WebSocket server');
+
+                // Запрос геолокации в реальном времени
+                navigator.geolocation.watchPosition(
+                    (position) => {
+                        const locationData = {
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            timestamp: position.timestamp
+                        };
+                        // Отправка данных на сервер
+                        ws.send(JSON.stringify(locationData));
+                        geo.innerText = JSON.stringify(locationData)
+                    },
+                    (error) => {
+                        console.error('Error obtaining location', error);
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 5000,
+                        maximumAge: 0
+                    }
+                );
+            };
+
+            ws.onmessage = (event) => {
+                console.log('Message from server: ', event.data);
+            };
+
+            ws.onclose = () => {
+                console.log('Disconnected from WebSocket server');
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket error: ', error);
+            };
+        } else {
+            console.log('Geolocation or WebSocket is not supported by your browser');
+        }
+    </script>
     <!-- iconsax js -->
     <script src="../assets/js/iconsax.js"></script>
 
